@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>バドミントンメモ</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #222; margin: 0; display: flex; flex-direction: column; height: 100vh; color: white; }
+        #menu-screen, #setup-screen, #result-screen { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; padding: 20px; overflow-y: auto; }
+        .menu-btn { width: 220px; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; cursor: pointer; background: #007bff; color: white; }
+        input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; width: 200px; text-align: center; background: #eee; color: #333; }
+        #app-screen { display: none; flex-direction: column; height: 100vh; }
+        #top-info { background: #333; padding: 5px 10px; display: flex; justify-content: space-around; font-size: 12px; font-weight: bold; border-bottom: 1px solid #444; align-items: center; }
+        .score-box { display: flex; align-items: center; gap: 8px; background: #444; padding: 4px 10px; border-radius: 20px; border: 2px solid transparent; }
+        .score-red-border { border-color: #d32f2f; }
+        .score-blue-border { border-color: #1976d2; }
+        .score-num { font-size: 24px; color: #ffeb3b; min-width: 30px; }
+        .score-btn { background: #666; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 16px; cursor: pointer; }
+        #canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; }
+        canvas { background: #1b5e20; touch-action: none; box-shadow: 0 0 20px rgba(0,0,0,0.5); cursor: crosshair; }
+        .controls { padding: 8px; background: white; display: flex; flex-direction: column; gap: 5px; color: #333; }
+        .row { display: flex; justify-content: center; gap: 4px; align-items: center; flex-wrap: wrap; }
+        .p-btn { width: 58px; height: 40px; border-radius: 8px; border: 3px solid #ccc; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: white; overflow: hidden; text-align: center; }
+        .active-p { border-color: #333 !important; transform: scale(1.05); }
+        .c-red1 { background: #d32f2f; } .c-red2 { background: #ff5252; }
+        .c-blue1 { background: #1976d2; } .c-blue2 { background: #448aff; }
+        .toggle-btn { padding: 8px; border: 2px solid #ccc; border-radius: 20px; background: #eee; cursor: pointer; font-size: 10px; font-weight: bold; flex: 1; }
+        .active-type { background: #333 !important; color: white; border-color: #000; }
+        .action-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+        button.action { padding: 8px 1px; font-size: 9px; border-radius: 4px; border: none; background: #666; color: white; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="menu-screen">
+        <h1>バドミントンメモ</h1>
+        <button class="menu-btn" onclick="showSetup('singles')">シングルス開始</button>
+        <button class="menu-btn" onclick="showSetup('doubles')" style="background: #28a745;">ダブルス開始</button>
+        <hr style="width:200px; border:0.5px solid #555;">
+        <button class="menu-btn" onclick="document.getElementById('csv-input').click()" style="background: #6c757d; font-size: 14px;">CSVから再開</button>
+        <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="loadCSV(this)">
+    </div>
+
+    <div id="setup-screen" style="display:none;">
+        <h2>プレイヤー名設定</h2>
+        <div id="name-inputs" style="display:flex; flex-direction:column; gap:10px;"></div>
+        <button class="menu-btn" onclick="startApp()" style="background:#ff9800; margin-top:20px;">開始！</button>
+    </div>
+
+    <div id="app-screen">
+        <div id="top-info">
+            <div class="score-box score-red-border">
+                <button class="score-btn" onclick="changeScore('red', -1)">-</button>
+                <span class="score-num" id="score-red">0</span>
+                <button class="score-btn" onclick="changeScore('red', 1)">+</button>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <span id="avg-rally" style="font-size:10px;">平均ラリー: 0.0</span>
+                <button onclick="finishMatch()" style="background:#ff9800; border:none; color:white; border-radius:4px; padding:3px 8px; font-weight:bold; margin-top:2px;">試合終了</button>
+            </div>
+            <div class="score-box score-blue-border">
+                <button class="score-btn" onclick="changeScore('blue', -1)">-</button>
+                <span class="score-num" id="score-blue">0</span>
+                <button class="score-btn" onclick="changeScore('blue', 1)">+</button>
+            </div>
+        </div>
+        <div id="canvas-container"><canvas id="court"></canvas></div>
+        <div class="controls">
+            <div class="row" id="player-selector">
+                <div id="btn-red1" class="p-btn c-red1 active-p" onclick="setPlayer('red1')"></div>
+                <div id="btn-red2" class="p-btn c-red2" onclick="setPlayer('red2')"></div>
+                <div id="btn-blue1" class="p-btn c-blue1" onclick="setPlayer('blue1')"></div>
+                <div id="btn-blue2" class="p-btn c-blue2" onclick="setPlayer('blue2')"></div>
+            </div>
+            <div class="row">
+                <div id="t-rally" class="toggle-btn active-type" onclick="setType('rally')">● ラリー</div>
+                <div id="t-win" class="toggle-btn" onclick="setType('win')">▲ 決め球</div>
+                <div id="t-miss" class="toggle-btn" onclick="setType('miss')">× ミス</div>
+            </div>
+            <div class="action-btns">
+                <button class="action" onclick="playReplay()" style="background:#ff9800;">再生</button>
+                <button class="action" onclick="undoLast()">1つ消す</button>
+                <button class="action" onclick="saveAsImage()">画像保存</button>
+                <button class="action" onclick="downloadCSV()">CSV保存</button>
+                <button class="action" onclick="clearCanvas()" style="background:#dc3545;">全消去</button>
+                <button class="action" onclick="location.reload()">TOPへ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-screen" style="display:none;">
+        <h2>試合分析レポート</h2>
+        <h3 id="final-score" style="color:#ffeb3b; margin:0;"></h3>
+        <div id="report-container" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
+        <button class="menu-btn" onclick="closeResult()">記録に戻る</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('court'), ctx = canvas.getContext('2d'), container = document.getElementById('canvas-container');
+        let points = [], currentPlayer = 'red1', currentType = 'rally', isPlaying = false, gameMode = 'singles';
+        let playerNames = { red1: "赤1", red2: "赤2", blue1: "青1", blue2: "青2" };
+        let scores = { red: 0, blue: 0 };
+        const COURT_W = 6.1, COURT_H = 13.4, MARGIN = 2.0, TOTAL_W = 10.1, TOTAL_H = 17.4, RATIO = TOTAL_H / TOTAL_W;
+        const colorMap = { red1: "#d32f2f", red2: "#ff5252", blue1: "#1976d2", blue2: "#448aff" };
+
+        function showSetup(mode) {
+            gameMode = mode;
+            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('setup-screen').style.display = 'flex';
+            const area = document.getElementById('name-inputs'); area.innerHTML = '';
+            const targets = mode === 'singles' ? ['red1', 'blue1'] : ['red1', 'red2', 'blue1', 'blue2'];
+            targets.forEach((id, i) => { area.innerHTML += `<div style="font-size:11px;color:#aaa;text-align:left;">${id.startsWith('red')?'赤チーム（上）':'青チーム（下）'}</div><input type="text" id="in-${id}" value="プレイヤー${i+1}">`; });
+        }
+
+        function startApp() {
+            const targets = gameMode === 'singles' ? ['red1', 'blue1'] : ['red1', 'red2', 'blue1', 'blue2'];
+            targets.forEach(id => { playerNames[id] = document.getElementById(`in-${id}`).value || id; document.getElementById(`btn-${id}`).innerText = playerNames[id]; });
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'flex';
+            document.getElementById('btn-red2').style.display = gameMode === 'doubles' ? 'flex' : 'none';
+            document.getElementById('btn-blue2').style.display = gameMode === 'doubles' ? 'flex' : 'none';
+            resizeCanvas(); updateStats();
+        }
+
+        function changeScore(team, val) { scores[team] = Math.max(0, scores[team] + val); document.getElementById(`score-${team}`).innerText = scores[team]; }
+        function setPlayer(p) { currentPlayer = p; document.querySelectorAll('.p-btn').forEach(b => b.classList.remove('active-p')); document.getElementById('btn-' + p).classList.add('active-p'); }
+        function setType(t) { currentType = t; ['rally','win','miss'].forEach(type => document.getElementById('t-'+type).className = 'toggle-btn' + (t===type?' active-type':'')); }
+        function updateStats() { const total = points.length; const avg = total > 0 ? (points.reduce((s, p) => s + p.rallyCount, 0) / total).toFixed(1) : 0; document.getElementById('avg-rally').innerText = `平均ラリー: ${avg}`; }
+
+        function drawCourtLines() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const sw = canvas.width / TOTAL_W, sh = canvas.height / TOTAL_H, ox = MARGIN * sw, oy = MARGIN * sh, cw = COURT_W * sw, ch = COURT_H * sh;
+            ctx.fillStyle = "#1e5e20"; ctx.fillRect(ox, oy, cw, ch);
+            ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+            const line = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+            ctx.strokeRect(ox, oy, cw, ch);
+            ctx.lineWidth = 3; line(ox, oy+ch/2, ox+cw, oy+ch/2);
+            ctx.lineWidth = 2; const ssd = 1.98 * sh;
+            line(ox, oy+ch/2-ssd, ox+cw, oy+ch/2-ssd); line(ox, oy+ch/2+ssd, ox+cw, oy+ch/2+ssd);
+            line(ox+0.46*sw, oy, ox+0.46*sw, oy+ch); line(ox+cw-0.46*sw, oy, ox+cw-0.46*sw, oy+ch);
+            if(gameMode==='doubles'){ const dld = 0.76 * sh; line(ox, oy+dld, ox+cw, oy+dld); line(ox, oy+ch-dld, ox+cw, oy+ch-dld); }
+            line(ox+cw/2, oy, ox+cw/2, oy+ch/2-ssd); line(ox+cw/2, oy+ch/2+ssd, ox+cw/2, oy+ch);
+        }
+
+        function drawShape(p) {
+            const x = p.x * canvas.width, y = p.y * canvas.height, color = colorMap[p.player];
+            ctx.fillStyle = color; ctx.strokeStyle = "white"; ctx.lineWidth = 2;
+            if (p.type === 'rally') { ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+            else if (p.type === 'win') { ctx.beginPath(); ctx.moveTo(x, y-11); ctx.lineTo(x-11, y+9); ctx.lineTo(x+11, y+9); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+            else if (p.type === 'miss') { ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x-9, y-9); ctx.lineTo(x+9, y+9); ctx.moveTo(x+9, y-9); ctx.lineTo(x-9, y+9); ctx.stroke(); ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke(); }
+        }
+
+        function drawAll() { drawCourtLines(); points.forEach(p => drawShape(p)); }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if(isPlaying) return;
+            const rect = canvas.getBoundingClientRect();
+            const px = (e.clientX - rect.left) / canvas.width, py = (e.clientY - rect.top) / canvas.height;
+            const clickedIdx = points.findIndex(p => Math.hypot(p.x * canvas.width - (px * canvas.width), p.y * canvas.height - (py * canvas.height)) < 15);
+            if (clickedIdx !== -1) return alert(`名前: ${playerNames[points[clickedIdx].player]}\n打数: ${points[clickedIdx].rallyCount}`);
+
+            let tempType = currentType;
+            const isUpper = py < 0.5;
+
+            // 自陣への着弾チェック（警告）
+            if (tempType !== 'miss') {
+                if ((currentPlayer.startsWith('red') && isUpper) || (currentPlayer.startsWith('blue') && !isUpper)) {
+                    if (confirm("自陣への着弾ですが、ミス(×)に切り替えますか？")) tempType = 'miss';
+                }
+            }
+
+            const val = prompt("ラリー数", ""); if (!val || isNaN(val)) return;
+
+            // 【自動スコアロジック】
+            if (tempType === 'miss') {
+                // ミス＝相手に点が入る
+                const targetTeam = py < 0.5 ? 'blue' : 'red';
+                changeScore(targetTeam, 1);
+            } else if (tempType === 'win') {
+                // 決め球＝打った本人(チーム)に点が入る
+                const targetTeam = currentPlayer.startsWith('red') ? 'red' : 'blue';
+                changeScore(targetTeam, 1);
+            }
+
+            points.push({ x: px, y: py, player: currentPlayer, type: tempType, rallyCount: parseInt(val) });
+            drawAll(); updateStats();
+        });
+
+        function finishMatch() {
+            if (!points.length) return alert("記録がありません");
+            document.getElementById('app-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'flex';
+            document.getElementById('final-score').innerText = `最終スコア 赤 ${scores.red} - ${scores.blue} 青`;
+            const cont = document.getElementById('report-container'); cont.innerHTML = '';
+            const actives = gameMode === 'singles' ? ['red1', 'blue1'] : ['red1', 'red2', 'blue1', 'blue2'];
+            actives.forEach(id => {
+                const pData = points.filter(pt => pt.player === id);
+                const wins = pData.filter(pt => pt.type === 'win').length, misses = pData.filter(pt => pt.type === 'miss').length;
+                const avgR = pData.length ? (pData.reduce((s, pt) => s + pt.rallyCount, 0) / pData.length).toFixed(1) : 0;
+                let adv = misses > wins ? "確実な返球を意識。" : "攻めが良いですね。";
+                if (parseFloat(avgR) >= 20.0) adv += " 驚異の粘り強さ！";
+                cont.innerHTML += `<div class="report-card"><div class="report-name">${playerNames[id]}</div><div class="report-text">決め球: ${wins} / ミス: ${misses} / 平均: ${avgR}回</div><div style="color:#00ffcc;font-size:11px;">💡 ${adv}</div></div>`;
+            });
+        }
+
+        function closeResult() { document.getElementById('result-screen').style.display = 'none'; document.getElementById('app-screen').style.display = 'flex'; resizeCanvas(); }
+        function resizeCanvas() { if(document.getElementById('app-screen').style.display==='flex'){ let w=container.clientWidth, h=w*RATIO; if(h>container.clientHeight){h=container.clientHeight; w=h/RATIO;} canvas.width=w; canvas.height=h; drawAll(); } }
+        async function playReplay() { isPlaying=true; for(let i=0; i<=points.length; i++){ drawCourtLines(); for(let j=0; j<i; j++) drawShape(points[j]); if(i<points.length) await new Promise(r=>setTimeout(r,600)); } isPlaying=false; }
+        
+        function undoLast() { 
+            const last = points.pop(); 
+            if(last) {
+                if(last.type === 'miss') {
+                    const t = last.y < 0.5 ? 'blue' : 'red';
+                    changeScore(t, -1);
+                } else if(last.type === 'win') {
+                    const t = last.player.startsWith('red') ? 'red' : 'blue';
+                    changeScore(t, -1);
+                }
+            }
+            drawAll(); updateStats(); 
+        }
+        
+        function clearCanvas() { if(confirm("全消去？")){ points=[]; scores={red:0,blue:0}; document.getElementById('score-red').innerText=0; document.getElementById('score-blue').innerText=0; drawAll(); updateStats(); } }
+        function saveAsImage() { const link = document.createElement('a'); link.href = canvas.toDataURL(); link.download = 'result.png'; link.click(); }
+        function downloadCSV() {
+            let csv = `FinalScore,Red,${scores.red},Blue,${scores.blue}\norder,player_name,type,rally,x,y\n` + points.map((p,i)=>`${i+1},${playerNames[p.player]},${p.type},${p.rallyCount},${p.x.toFixed(3)},${p.y.toFixed(3)}`).join("\n");
+            const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'data.csv'; a.click();
+        }
+        function loadCSV(input) {
+            const reader = new FileReader(); reader.onload = (e) => {
+                const rows = e.target.result.split('\n');
+                if(rows.startsWith('FinalScore')){
+                    const s = rows.split(','); scores.red = parseInt(s); scores.blue = parseInt(s);
+                    document.getElementById('score-red').innerText = scores.red; document.getElementById('score-blue').innerText = scores.blue;
+                }
+                points = []; rows.slice(2).forEach(row => {
+                    const c = row.split(','); if(c.length < 6) return;
+                    points.push({ player: (c.includes('赤') || c.includes('プレイヤー1') || c.includes('プレイヤー2') ? 'red1' : 'blue1'), type: c, rallyCount: parseInt(c), x: parseFloat(c), y: parseFloat(c) });
+                });
+                startAppFromCSV();
+            }; reader.readAsText(input.files);
+        }
+        function startAppFromCSV() { document.getElementById('menu-screen').style.display='none'; document.getElementById('app-screen').style.display='flex'; resizeCanvas(); updateStats(); }
+        window.addEventListener('resize', resizeCanvas);
+    </script>
+</body>
+</html>
