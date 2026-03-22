@@ -11,36 +11,41 @@
         input { padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; width: 200px; text-align: center; background: #fff; color: #000; }
         
         #app-screen { display: none; flex-direction: column; height: 100vh; position: relative; }
-        #top-info { background: #333; padding: 5px 10px; display: flex; justify-content: space-around; font-size: 12px; font-weight: bold; border-bottom: 1px solid #444; align-items: center; z-index: 10; }
+        #top-info { background: #333; padding: 5px 10px; display: flex; justify-content: space-around; font-size: 12px; font-weight: bold; border-bottom: 1px solid #444; align-items: center; position: relative; z-index: 50; }
         .score-box { display: flex; align-items: center; gap: 8px; background: #444; padding: 4px 10px; border-radius: 20px; border: 2px solid transparent; }
         .score-red-border { border-color: #d32f2f; }
         .score-blue-border { border-color: #1976d2; }
         .score-num { font-size: 24px; color: #ffeb3b; min-width: 30px; }
         .score-btn { background: #666; color: white; border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 18px; }
 
-        #canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; background: #222; }
+        #canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; background: #222; position: relative; z-index: 10; }
         canvas { background: #1b5e20; touch-action: none; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
 
-        /* 自作入力パネル（Androidキーボード対策） */
+        /* --- 自作入力パネル (ここを大幅強化) --- */
         #input-panel { 
-            display: none; 
+            display: none; /* JSで'flex'に切り替え */
             position: fixed; 
-            top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); 
-            background: #333; 
-            padding: 20px; 
-            border-radius: 20px; 
-            border: 3px solid #ff9800; 
-            z-index: 9999; 
-            width: 280px; 
-            box-shadow: 0 0 100px rgba(0,0,0,0.9);
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.8); /* 画面全体を暗くする */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999; /* 圧倒的最前面 */
+        }
+        .panel-content {
+            background: #333;
+            padding: 20px;
+            border-radius: 20px;
+            border: 3px solid #ff9800;
+            width: 280px;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
         }
         #input-display { font-size: 32px; margin-bottom: 15px; background: #eee; color: #000; border-radius: 8px; padding: 10px; font-weight: bold; }
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .num-btn { padding: 15px; font-size: 22px; font-weight: bold; border-radius: 12px; border: none; background: #555; color: white; -webkit-tap-highlight-color: transparent; }
-        .num-btn:active { background: #777; }
+        .num-btn { padding: 15px; font-size: 22px; font-weight: bold; border-radius: 12px; border: none; background: #555; color: white; }
+        /* -------------------------------------- */
 
-        .controls { padding: 8px; background: white; display: flex; flex-direction: column; gap: 5px; color: #333; z-index: 10; }
+        .controls { padding: 8px; background: white; display: flex; flex-direction: column; gap: 5px; color: #333; position: relative; z-index: 50; }
         .row { display: flex; justify-content: center; gap: 4px; align-items: center; flex-wrap: wrap; }
         .p-btn { width: 60px; height: 42px; border-radius: 8px; border: 3px solid #ccc; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: white; text-align: center; }
         .active-p { border-color: #333 !important; transform: scale(1.05); }
@@ -71,6 +76,20 @@
     </div>
 
     <div id="app-screen">
+        <!-- 入力パネル (app-screenの中に配置) -->
+        <div id="input-panel">
+            <div class="panel-content">
+                <div style="margin-bottom:10px; font-weight:bold; color:white;">ラリー数を入力</div>
+                <div id="input-display">0</div>
+                <div class="numpad">
+                    <button class="num-btn" onclick="pressNum(1)">1</button><button class="num-btn" onclick="pressNum(2)">2</button><button class="num-btn" onclick="pressNum(3)">3</button>
+                    <button class="num-btn" onclick="pressNum(4)">4</button><button class="num-btn" onclick="pressNum(5)">5</button><button class="num-btn" onclick="pressNum(6)">6</button>
+                    <button class="num-btn" onclick="pressNum(7)">7</button><button class="num-btn" onclick="pressNum(8)">8</button><button class="num-btn" onclick="pressNum(9)">9</button>
+                    <button class="num-btn" onclick="pressNum('C')" style="background:#dc3545;">C</button><button class="num-btn" onclick="pressNum(0)">0</button><button class="num-btn" onclick="pressNum('OK')" style="background:#28a745;">OK</button>
+                </div>
+            </div>
+        </div>
+
         <div id="top-info">
             <div class="score-box score-red-border">
                 <button class="score-btn" onclick="changeScore('red', -1)">−</button>
@@ -89,18 +108,6 @@
         </div>
 
         <div id="canvas-container"><canvas id="court"></canvas></div>
-
-        <!-- 自作テンキーパネル -->
-        <div id="input-panel">
-            <div style="margin-bottom:10px; font-weight:bold;">ラリー数を入力</div>
-            <div id="input-display">0</div>
-            <div class="numpad">
-                <button class="num-btn" onclick="pressNum(1)">1</button><button class="num-btn" onclick="pressNum(2)">2</button><button class="num-btn" onclick="pressNum(3)">3</button>
-                <button class="num-btn" onclick="pressNum(4)">4</button><button class="num-btn" onclick="pressNum(5)">5</button><button class="num-btn" onclick="pressNum(6)">6</button>
-                <button class="num-btn" onclick="pressNum(7)">7</button><button class="num-btn" onclick="pressNum(8)">8</button><button class="num-btn" onclick="pressNum(9)">9</button>
-                <button class="num-btn" onclick="pressNum('C')" style="background:#dc3545;">C</button><button class="num-btn" onclick="pressNum(0)">0</button><button class="num-btn" onclick="pressNum('OK')" style="background:#28a745;">OK</button>
-            </div>
-        </div>
 
         <div class="controls">
             <div class="row" id="player-selector">
@@ -130,7 +137,6 @@
         <h3 id="final-score" style="color:#ffeb3b; margin:0;"></h3>
         <div id="report-container" style="width:100%; display:flex; flex-direction:column; align-items:center;"></div>
         <button class="menu-btn" onclick="closeResult()">記録に戻る</button>
-        <button class="menu-btn" onclick="location.reload()" style="background:#666;">終了</button>
     </div>
 
     <script>
@@ -157,7 +163,7 @@
             targets.forEach(id => {
                 const inputEl = document.getElementById(`in-${id}`);
                 playerNames[id] = inputEl.value || id;
-                inputEl.blur(); // キーボードを閉じる
+                inputEl.blur(); 
                 document.getElementById(`btn-${id}`).innerText = playerNames[id];
             });
             document.getElementById('setup-screen').style.display = 'none';
@@ -198,7 +204,6 @@
         function drawAll() { drawCourtLines(); points.forEach(p => drawShape(p)); }
 
         canvas.addEventListener('pointerdown', (e) => {
-            // 他の入力要素のフォーカスを解除してキーボードを確実に閉じる
             document.activeElement.blur();
             if(isPlaying || pendingPoint) return;
 
@@ -220,7 +225,7 @@
         function openInputPanel() {
             currentInputValue = "";
             document.getElementById('input-display').innerText = "0";
-            document.getElementById('input-panel').style.display = 'block';
+            document.getElementById('input-panel').style.display = 'flex'; // 'flex'で確実に中央表示
         }
 
         function pressNum(n) {
@@ -277,24 +282,24 @@
             drawAll(); updateStats(); 
         }
         function clearCanvas() { if(confirm("全消去？")){ points=[]; scores={red:0,blue:0}; document.getElementById('score-red').innerText=0; document.getElementById('score-blue').innerText=0; drawAll(); updateStats(); } }
-        function saveAsImage() { const link = document.createElement('a'); link.href = canvas.toDataURL(); link.download = 'match_result.png'; link.click(); }
+        function saveAsImage() { const link = document.createElement('a'); link.href = canvas.toDataURL(); link.download = 'result.png'; link.click(); }
         function downloadCSV() {
             let csv = `FinalScore,Red,${scores.red},Blue,${scores.blue}\norder,player_name,type,rally,x,y\n` + points.map((p,i)=>`${i+1},${playerNames[p.player]},${p.type},${p.rallyCount},${p.x.toFixed(3)},${p.y.toFixed(3)}`).join("\n");
-            const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'badminton_data.csv'; a.click();
+            const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'data.csv'; a.click();
         }
         function loadCSV(input) {
             const reader = new FileReader(); reader.onload = (e) => {
                 const rows = e.target.result.split('\n');
-                if(rows[0].startsWith('FinalScore')){
-                    const s = rows[0].split(','); scores.red = parseInt(s[2]); scores.blue = parseInt(s[4]);
+                if(rows.startsWith('FinalScore')){
+                    const s = rows.split(','); scores.red = parseInt(s); scores.blue = parseInt(s);
                     document.getElementById('score-red').innerText = scores.red; document.getElementById('score-blue').innerText = scores.blue;
                 }
                 points = []; rows.slice(2).forEach(row => {
                     const c = row.split(','); if(c.length < 6) return;
-                    points.push({ player: (c[1] === playerNames.red1 || c[1] === playerNames.red2 ? 'red1' : 'blue1'), type: c[2], rallyCount: parseInt(c[3]), x: parseFloat(c[4]), y: parseFloat(c[5]) });
+                    points.push({ player: (c.includes('プレイヤー1') || c.includes('プレイヤー2') ? 'red1' : 'blue1'), type: c, rallyCount: parseInt(c), x: parseFloat(c), y: parseFloat(c) });
                 });
                 startAppFromCSV();
-            }; reader.readAsText(input.files[0]);
+            }; reader.readAsText(input.files);
         }
         function startAppFromCSV() { document.getElementById('menu-screen').style.display='none'; document.getElementById('app-screen').style.display='flex'; resizeCanvas(); updateStats(); }
         window.addEventListener('resize', resizeCanvas);
